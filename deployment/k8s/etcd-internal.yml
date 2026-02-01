@@ -1,0 +1,131 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: etcd-endpoint
+  namespace: default
+  labels:
+    app: etcd
+spec:
+  type: ClusterIP
+  ports:
+  - name: client
+    port: 2379
+    targetPort: 2379
+    protocol: TCP
+  - name: peer
+    port: 2380
+    targetPort: 2380
+    protocol: TCP
+  selector:
+    app: etcd
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: etcd
+  namespace: default
+  labels:
+    app: etcd
+spec:
+  serviceName: etcd-headless
+  replicas: 1
+  selector:
+    matchLabels:
+      app: etcd
+  template:
+    metadata:
+      labels:
+        app: etcd
+    spec:
+      containers:
+      - name: etcd
+        image: gcr.io/etcd-development/etcd:v3.6.5
+        ports:
+        - name: client
+          containerPort: 2379
+          hostPort: 2379
+          protocol: TCP
+        - name: peer
+          containerPort: 2380
+          hostPort: 2380
+          protocol: TCP
+        env:
+        - name: ETCD_NAME
+          value: "node1"
+        - name: ETCD_ADVERTISE_CLIENT_URLS
+          value: "http://0.0.0.0:2379"
+        - name: ETCD_LISTEN_CLIENT_URLS
+          value: "http://0.0.0.0:2379"
+        - name: ETCD_INITIAL_CLUSTER
+          value: "node1=http://0.0.0.0:2380"
+        - name: ETCD_INITIAL_ADVERTISE_PEER_URLS
+          value: "http://0.0.0.0:2380"
+        - name: ETCD_LISTEN_PEER_URLS
+          value: "http://0.0.0.0:2380"
+        - name: ETCD_INITIAL_CLUSTER_STATE
+          value: "new"
+        - name: ETCD_INITIAL_CLUSTER_TOKEN
+          value: "fastrg-cluster"
+        - name: ETCD_DATA_DIR
+          value: "/etcd-data"
+        volumeMounts:
+        - name: etcd-data
+          mountPath: /etcd-data
+        livenessProbe:
+          exec:
+            command:
+            - etcdctl
+            - endpoint
+            - health
+          initialDelaySeconds: 15
+          periodSeconds: 20
+          timeoutSeconds: 5
+          failureThreshold: 3
+        readinessProbe:
+          exec:
+            command:
+            - etcdctl
+            - endpoint
+            - health
+          initialDelaySeconds: 5
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+        resources:
+          requests:
+            memory: "128Mi"
+            cpu: "100m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+  volumeClaimTemplates:
+  - metadata:
+      name: etcd-data
+    spec:
+      accessModes:
+      - ReadWriteOnce
+      resources:
+        requests:
+          storage: 10Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: etcd-headless
+  namespace: default
+  labels:
+    app: etcd
+spec:
+  type: ClusterIP
+  clusterIP: None
+  ports:
+  - name: client
+    port: 2379
+    targetPort: 2379
+    protocol: TCP
+  - name: peer
+    port: 2380
+    targetPort: 2380
+    protocol: TCP
+  selector:
+    app: etcd

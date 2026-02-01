@@ -1,0 +1,46 @@
+# Ignore build artifacts
+bin/
+web/build/
+*.log
+docs/
+
+# Ignore git files
+.git/
+.gitignore
+
+# Ignore development certificates
+certs/
+
+# Ignore test artifacts
+backend.pid
+backend.log
+
+# Ignore node modules (they'll be installed during build)
+web/node_modules/
+
+# Ignore Go module cache
+.gocache/
+
+# Ignore editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Ignore OS files
+.DS_Store
+Thumbs.db
+
+# Ignore documentation that's not needed in container
+*.md
+LICENSE
+
+# Ignore development scripts
+tools/
+!tools/create_user/
+!tools/put_node/
+
+# Ignore Docker files themselves
+Dockerfile*
+docker-compose*.yml
+.dockerignore

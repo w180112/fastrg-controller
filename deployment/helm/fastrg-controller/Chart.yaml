@@ -1,0 +1,18 @@
+apiVersion: v2
+name: fastrg-controller
+description: A Helm chart for FastRG Controller
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
+keywords:
+  - networking
+  - router
+  - gateway
+  - controller
+home: https://github.com/w180112/fastrg-controller
+sources:
+  - https://github.com/w180112/fastrg-controller
+maintainers:
+  - name: FastRG Team
+    email: support@fastrg.io
+dependencies: []

@@ -1,0 +1,211 @@
+# Default values for fastrg-controller.
+# This is a YAML-formatted file.
+# Declare variables to be substituted into templates.
+
+# Global configuration
+global:
+  namespace: fastrg-system
+  storageClass: standard
+
+# FastRG Controller configuration
+controller:
+  replicaCount: 3
+  
+  image:
+    repository: fastrg-controller
+    tag: latest
+    pullPolicy: Never
+  
+  service:
+    # ClusterIP service for internal communication
+    type: ClusterIP
+    grpcPort: 50051
+    httpPort: 8080
+    httpsPort: 8443
+    logHttpsPort: 8444
+    prometheusPort: 55688
+    
+  # LoadBalancer service configuration (optional)
+  loadBalancer:
+    enabled: true
+    type: LoadBalancer
+    annotations:
+      # Cilium LoadBalancer configuration
+      service.cilium.io/lb-ipam-ips: "auto"
+    
+  config:
+    etcdEndpoints: "etcd-endpoint:2379"
+    grpcPort: "50051"
+    httpRedirectPort: "8080"
+    httpsPort: "8443"
+    ginMode: "release"
+    # Prometheus metrics server IP (defaults to 127.0.0.1 if not set)
+    prometheusListenIP: "0.0.0.0"
+  
+  # SSL Certificate configuration
+  tls:
+    enabled: true
+    generate: true  # Generate self-signed certificates
+    certFile: "/app/certs/server.crt"
+    keyFile: "/app/certs/server.key"
+    # If generate is false, provide existing certificates
+    existingSecret: ""
+    
+  # Storage configuration
+  persistence:
+    enabled: true
+    size: 5Gi
+    storageClass: ""  # Uses global.storageClass if empty
+    
+  # Resource limits
+  resources:
+    requests:
+      memory: "512Mi"
+      cpu: "500m"
+    limits:
+      memory: "1Gi"
+      cpu: "1000m"
+      
+  # Security context
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 1001
+    runAsGroup: 1001
+    allowPrivilegeEscalation: false
+    
+  # Health checks (TCP socket probes like in k8s deployment)
+  livenessProbe:
+    tcpSocket:
+      port: 8443
+    initialDelaySeconds: 30
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 3
+    
+  readinessProbe:
+    tcpSocket:
+      port: 8443
+    initialDelaySeconds: 10
+    periodSeconds: 5
+    timeoutSeconds: 3
+    failureThreshold: 3
+
+# etcd configuration
+etcd:
+  # Deploy internal etcd or use external etcd service
+  type: internal  # internal or external
+  
+  # Internal etcd configuration (when type: internal)
+  internal:
+    enabled: true
+    replicaCount: 1
+    
+    image:
+      repository: gcr.io/etcd-development/etcd
+      tag: v3.6.5
+      pullPolicy: IfNotPresent
+    
+    service:
+      type: ClusterIP
+      clientPort: 2379
+      peerPort: 2380
+      
+    config:
+      name: "node1"
+      advertiseClientUrls: "http://0.0.0.0:2379"
+      listenClientUrls: "http://0.0.0.0:2379"
+      initialCluster: "node1=http://0.0.0.0:2380"
+      initialAdvertisePeerUrls: "http://0.0.0.0:2380"
+      listenPeerUrls: "http://0.0.0.0:2380"
+      initialClusterState: "new"
+      initialClusterToken: "fastrg-cluster"
+      
+    # Storage configuration
+    persistence:
+      enabled: true
+      size: 10Gi
+      storageClass: ""  # Uses global.storageClass if empty
+      
+    # Resource limits
+    resources:
+      requests:
+        memory: "256Mi"
+        cpu: "250m"
+      limits:
+        memory: "512Mi"
+        cpu: "500m"
+        
+    # Health checks
+    livenessProbe:
+      exec:
+        command:
+          - etcdctl
+          - endpoint
+          - health
+      initialDelaySeconds: 30
+      periodSeconds: 10
+      timeoutSeconds: 5
+      failureThreshold: 3
+      
+    readinessProbe:
+      exec:
+        command:
+          - etcdctl
+          - endpoint
+          - health
+      initialDelaySeconds: 10
+      periodSeconds: 5
+      timeoutSeconds: 3
+      failureThreshold: 3
+  
+  # External etcd configuration (when type: external)
+  external:
+    service:
+      name: etcd-endpoint
+      type: ClusterIP  # ClusterIP or ExternalName
+      externalName: "fastrg-etcd-service"  # Only used when type: ExternalName
+      port: 2379
+    # For ClusterIP type with manual endpoints (like etcd-external.yml)
+    endpoints:
+      - ip: "192.168.10.12"
+        port: 2379
+      # - ip: "192.168.10.13"
+      #   port: 2379
+
+
+# Service account configuration
+serviceAccount:
+  create: true
+  name: fastrg-controller-sa
+  annotations: {}
+
+# RBAC configuration
+rbac:
+  create: true
+
+# Node selector, tolerations and affinity
+nodeSelector: {}
+tolerations: []
+affinity: {}
+
+# Pod disruption budget
+podDisruptionBudget:
+  enabled: false
+  minAvailable: 1
+
+# Horizontal Pod Autoscaler
+autoscaling:
+  enabled: false
+  minReplicas: 1
+  maxReplicas: 10
+  targetCPUUtilizationPercentage: 80
+  targetMemoryUtilizationPercentage: 80
+
+# Monitoring
+monitoring:
+  enabled: true
+  serviceMonitor:
+    enabled: true
+    namespace: monitoring
+    interval: 30s
+    scrapeTimeout: 10s

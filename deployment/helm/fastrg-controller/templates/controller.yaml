@@ -1,0 +1,158 @@
+{{/* ConfigMap is not used in the k8s deployment, using env vars directly */}}
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: fastrg-controller-service
+  namespace: {{ .Values.global.namespace }}
+  labels:
+    {{- include "fastrg-controller.labels" . | nindent 4 }}
+    app: fastrg-controller
+spec:
+  type: {{ .Values.controller.service.type }}
+  ports:
+    - name: https
+      port: {{ .Values.controller.service.httpsPort }}
+      targetPort: {{ .Values.controller.service.httpsPort }}
+      protocol: TCP
+    - name: log-https
+      port: {{ .Values.controller.service.logHttpsPort }}
+      targetPort: {{ .Values.controller.service.logHttpsPort }}
+      protocol: TCP
+    - name: http
+      port: {{ .Values.controller.service.httpPort }}
+      targetPort: {{ .Values.controller.service.httpPort }}
+      protocol: TCP
+    - name: grpc
+      port: {{ .Values.controller.service.grpcPort }}
+      targetPort: {{ .Values.controller.service.grpcPort }}
+      protocol: TCP
+    - name: prometheus
+      port: {{ .Values.controller.service.prometheusPort }}
+      targetPort: {{ .Values.controller.service.prometheusPort }}
+      protocol: TCP
+  selector:
+    app: fastrg-controller
+
+---
+{{- if .Values.controller.loadBalancer.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: fastrg-controller-loadbalancer
+  namespace: {{ .Values.global.namespace }}
+  labels:
+    {{- include "fastrg-controller.labels" . | nindent 4 }}
+    app: fastrg-controller
+  {{- if .Values.controller.loadBalancer.annotations }}
+  annotations:
+    {{- toYaml .Values.controller.loadBalancer.annotations | nindent 4 }}
+  {{- end }}
+spec:
+  type: {{ .Values.controller.loadBalancer.type }}
+  ports:
+    - name: https
+      port: {{ .Values.controller.service.httpsPort }}
+      targetPort: {{ .Values.controller.service.httpsPort }}
+      protocol: TCP
+    - name: log-https
+      port: {{ .Values.controller.service.logHttpsPort }}
+      targetPort: {{ .Values.controller.service.logHttpsPort }}
+      protocol: TCP
+    - name: http
+      port: {{ .Values.controller.service.httpPort }}
+      targetPort: {{ .Values.controller.service.httpPort }}
+      protocol: TCP
+    - name: grpc
+      port: {{ .Values.controller.service.grpcPort }}
+      targetPort: {{ .Values.controller.service.grpcPort }}
+      protocol: TCP
+    - name: prometheus
+      port: {{ .Values.controller.service.prometheusPort }}
+      targetPort: {{ .Values.controller.service.prometheusPort }}
+      protocol: TCP
+  selector:
+    app: fastrg-controller
+{{- end }}
+
+---
+{{- if .Values.controller.persistence.enabled }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: fastrg-controller-logs
+  namespace: {{ .Values.global.namespace }}
+  labels:
+    app.kubernetes.io/name: {{ include "fastrg-controller.name" . }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: {{ .Values.controller.persistence.size }}
+  {{- if .Values.controller.persistence.storageClass }}
+  storageClassName: {{ .Values.controller.persistence.storageClass }}
+  {{- else if .Values.global.storageClass }}
+  storageClassName: {{ .Values.global.storageClass }}
+  {{- end }}
+{{- end }}
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: fastrg-controller
+  namespace: {{ .Values.global.namespace }}
+  labels:
+    {{- include "fastrg-controller.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.controller.replicaCount }}
+  selector:
+    matchLabels:
+      app: fastrg-controller
+  template:
+    metadata:
+      labels:
+        app: fastrg-controller
+    spec:
+      containers:
+      - name: fastrg-controller
+        image: "{{ .Values.controller.image.repository }}:{{ .Values.controller.image.tag }}"
+        imagePullPolicy: {{ .Values.controller.image.pullPolicy }}
+        ports:
+        - containerPort: {{ .Values.controller.service.httpsPort }}
+          hostPort: {{ .Values.controller.service.httpsPort }}
+          name: https
+        - containerPort: {{ .Values.controller.service.logHttpsPort }}
+          hostPort: {{ .Values.controller.service.logHttpsPort }}
+          name: log-https
+        - containerPort: {{ .Values.controller.service.httpPort }}
+          hostPort: {{ .Values.controller.service.httpPort }}
+          name: http
+        - containerPort: {{ .Values.controller.service.grpcPort }}
+          hostPort: {{ .Values.controller.service.grpcPort }}
+          name: grpc
+          protocol: TCP
+        - containerPort: {{ .Values.controller.service.prometheusPort }}
+          hostPort: {{ .Values.controller.service.prometheusPort }}
+          name: prometheus
+          protocol: TCP
+        env:
+        - name: ETCD_ENDPOINTS
+          value: {{- if eq .Values.etcd.type "internal" }} "etcd-endpoint:2379" {{- else }} "{{- range $index, $endpoint := .Values.etcd.external.endpoints }}{{- if $index }},{{- end }}{{ $endpoint.ip }}:{{ $endpoint.port }}{{- end }}" {{- end }}
+        - name: CERT_FILE
+          value: {{ .Values.controller.tls.certFile | quote }}
+        - name: KEY_FILE
+          value: {{ .Values.controller.tls.keyFile | quote }}
+        - name: PROMETHEUS_LISTEN_IP
+          value: {{ .Values.controller.config.prometheusListenIP | quote }}
+        readinessProbe:
+          {{- toYaml .Values.controller.readinessProbe | nindent 10 }}
+        livenessProbe:
+          {{- toYaml .Values.controller.livenessProbe | nindent 10 }}
+        {{- if .Values.controller.resources }}
+        resources:
+          {{- toYaml .Values.controller.resources | nindent 10 }}
+        {{- end }}

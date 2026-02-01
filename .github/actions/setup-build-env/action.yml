@@ -1,0 +1,20 @@
+name: 'Setup Build Environment'
+description: 'Setup Go, Node.js, Protoc and dependencies'
+runs:
+  using: "composite"
+  steps:
+    - name: Set up Go
+      uses: actions/setup-go@v6
+      with:
+        go-version: '>=1.25.1'
+    - name: Set up Node.js
+      uses: actions/setup-node@v5
+      with:
+        node-version: '>=24.10.0'
+    - name: Install Protoc
+      uses: arduino/setup-protoc@v3
+    - run: |
+        sudo apt update -y && \
+        go install google.golang.org/protobuf/cmd/protoc-gen-go@latest && \
+        go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@latest
+      shell: bash

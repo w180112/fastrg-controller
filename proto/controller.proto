@@ -1,0 +1,31 @@
+syntax = "proto3";
+
+package controller;
+
+option go_package = "fastrg-controller/proto/controllerpb";
+
+import "google/protobuf/empty.proto";
+
+
+service NodeManagement {
+  rpc RegisterNode(NodeRegisterRequest) returns (NodeRegisterReply) {}
+  rpc UnregisterNode(NodeRegisterRequest) returns (google.protobuf.Empty) {}
+  rpc Heartbeat(NodeHeartbeat) returns (google.protobuf.Empty) {}
+}
+
+message NodeRegisterRequest {
+  string node_uuid = 1;
+  string ip = 2;
+  string version = 3;
+}
+
+message NodeRegisterReply {
+  bool success = 1;
+  string message = 2;
+}
+
+message NodeHeartbeat {
+  string node_uuid = 1;
+  int64 uptime_timestamp = 2;
+  string ip = 3;
+}

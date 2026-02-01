@@ -1,0 +1,29 @@
+# Cilium LoadBalancer Service is to expose FastRG Controller ports
+apiVersion: v1
+kind: Service
+metadata:
+  name: fastrg-controller-loadbalancer
+  namespace: default
+  labels:
+    app: fastrg-controller  # Add label to match IP Pool selector
+  annotations:
+    # Use LoadBalancer from Cilium
+    service.cilium.io/lb-ipam-ips: "auto"
+spec:
+  type: LoadBalancer
+  externalTrafficPolicy: Local
+  selector:
+    app: fastrg-controller
+  ports:
+  - name: https
+    port: 8443
+    targetPort: 8443
+    protocol: TCP
+  - name: http
+    port: 8080
+    targetPort: 8080
+    protocol: TCP
+  - name: grpc
+    port: 50051
+    targetPort: 50051
+    protocol: TCP
