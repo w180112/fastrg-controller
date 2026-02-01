@@ -77,7 +77,7 @@ test_etcd_seed() {
 # Function: Test login via REST (HTTPS)
 test_login() {
     log_info "Testing POST /api/login (HTTPS)..."
-    curl -s -k -X POST https://$ENDPOINT:8443/api/login -H 'Content-Type: application/json' -d '{"username":"admin","password":"secret"}' | jq -C . || true
+    curl -k -X POST https://$ENDPOINT:8443/api/login -H 'Content-Type: application/json' -d '{"username":"admin","password":"secret"}' | jq -C . || true
 }
 
 # Function: Test fetch nodes (HTTPS)
