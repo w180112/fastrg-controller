@@ -77,7 +77,7 @@ test_etcd_seed() {
 # Function: Test login via REST (HTTPS)
 test_login() {
     log_info "Testing POST /api/login (HTTPS)..."
-    cat $SCRIPT_DIR/../backend.log
+    sudo cat $SCRIPT_DIR/../backend.log
     curl -k -X POST https://$ENDPOINT:8443/api/login -H 'Content-Type: application/json' -d '{"username":"admin","password":"secret"}' | jq -C . || true
 }
 
