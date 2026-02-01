@@ -5,7 +5,7 @@
 # Usage: ./test_script.sh [ENDPOINT_ADDRESS]
 # Default endpoint: 127.0.0.1
 
-set -e
+set -ex
 
 # Color output
 RED='\033[0;31m'
@@ -398,6 +398,54 @@ if [ "$1" = "-h" ] || [ "$1" = "--help" ]; then
     show_usage
     exit 0
 fi
+
+# ---- CI failure diagnostics ----
+on_error() {
+    echo
+    echo "==================== CI DIAGNOSTICS (on error) ===================="
+    echo "Date: $(date)"
+    echo "ENDPOINT: $ENDPOINT"
+    echo "ETCD_ENDPOINTS: ${ETCD_ENDPOINTS:-unset}"
+    echo "Environment summary:"
+    env | grep -E 'GITHUB|CI|ETCD|ENDPOINT' || true
+    echo
+    echo "Which binaries:"
+    for cmd in docker go make jq curl ss netstat openssl; do
+      printf " - %-10s: " "$cmd"
+      command -v "$cmd" >/dev/null 2>&1 && command -v "$cmd" || echo "NOT FOUND"
+    done
+    echo
+    echo "Processes (controller / etcd / docker):"
+    ps aux | egrep 'controller|etcd|dockerd|docker' || true
+    echo
+    echo "Check built binary:"
+    ls -l "$SCRIPT_DIR/../bin" || true
+    if [ -f "$SCRIPT_DIR/../bin/controller" ]; then
+      echo "controller exists, ldd (if available):"
+      ldd "$SCRIPT_DIR/../bin/controller" || echo "ldd not available"
+    fi
+    echo
+    echo "backend.log (tail):"
+    if [ -f "$SCRIPT_DIR/../backend.log" ]; then
+      tail -200 "$SCRIPT_DIR/../backend.log" || true
+    else
+      echo "no backend.log found"
+    fi
+    echo
+    echo "Open ports (ss/netstat):"
+    if command -v ss >/dev/null 2>&1; then ss -lntp || true; elif command -v netstat >/dev/null 2>&1; then netstat -lntp || true; fi
+    echo
+    echo "Docker status (ps -a):"
+    docker ps -a --no-trunc || true
+    echo
+    echo "etcd health (from CI runner):"
+    curl -v --max-time 5 "http://127.0.0.1:2379/health" || true
+    echo
+    echo "HTTPS health (controller):"
+    curl -vk --max-time 5 "https://$ENDPOINT:8443/api/health" || true
+    echo "================================================================="
+  }
+trap on_error ERR
 
 # If second argument is provided, run specific function
 if [ -n "$2" ]; then
