@@ -5,7 +5,7 @@
 # Usage: ./test_script.sh [ENDPOINT_ADDRESS]
 # Default endpoint: 127.0.0.1
 
-set -ex
+set -e
 
 # Color output
 RED='\033[0;31m'
@@ -44,7 +44,7 @@ start_backend() {
     log_info "Starting backend (background)..."
     cd "$SCRIPT_DIR/.."
     log_info "Building backend..."
-    make build-backend > /dev/null 2>&1
+    make build-backend
     log_info "Starting backend..."
     nohup sudo ./bin/controller > backend.log 2>&1 &
     sleep 2
@@ -56,7 +56,7 @@ start_backend() {
 stop_backend() {
 
     if [ -f "$SCRIPT_DIR/../backend.pid" ]; then
-        kill $(cat "$SCRIPT_DIR/../backend.pid") || true
+        sudo kill $(cat "$SCRIPT_DIR/../backend.pid") || true
         rm -f "$SCRIPT_DIR/../backend.pid" || true
         log_success "Stopped backend"
     else
