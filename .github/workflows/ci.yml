@@ -24,7 +24,7 @@ jobs:
       uses: ./.github/actions/setup-build-env
     - name: Run tests
       run: |
-        sudo apt update -y && sudo apt install curl jq && make test
+        sudo make test
   docker-build:
     runs-on: ubuntu-latest
     steps:

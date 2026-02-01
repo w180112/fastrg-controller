@@ -46,7 +46,7 @@ start_backend() {
     log_info "Building backend..."
     make build-backend > /dev/null 2>&1
     log_info "Starting backend..."
-    nohup ./bin/controller > backend.log 2>&1 &
+    nohup sudo ./bin/controller > backend.log 2>&1 &
     sleep 2
     pidof controller > backend.pid || pgrep -f "controller" > backend.pid || true
     log_success "Backend log -> backend.log"
@@ -77,8 +77,7 @@ test_etcd_seed() {
 # Function: Test login via REST (HTTPS)
 test_login() {
     log_info "Testing POST /api/login (HTTPS)..."
-    sudo cat $SCRIPT_DIR/../backend.log
-    curl -k -X POST https://$ENDPOINT:8443/api/login -H 'Content-Type: application/json' -d '{"username":"admin","password":"secret"}' | jq -C . || true
+    curl -s -k -X POST https://$ENDPOINT:8443/api/login -H 'Content-Type: application/json' -d '{"username":"admin","password":"secret"}' | jq -C . || true
 }
 
 # Function: Test fetch nodes (HTTPS)
