@@ -142,6 +142,7 @@ clean-test-certs:
 test:
 	go clean -testcache
 	go test -count=1 -v ./internal/utils/
+	@$(MAKE) generate-test-certs
 	@$(MAKE) -C tools test
 
 # Test Help

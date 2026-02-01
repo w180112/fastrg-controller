@@ -2,7 +2,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: fastrg-controller
-  namespace: default
+  namespace: fastrg-system
 spec:
   replicas: 1
   selector:
@@ -62,7 +62,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: fastrg-controller-service
-  namespace: default
+  namespace: fastrg-system
 spec:
   selector:
     app: fastrg-controller
