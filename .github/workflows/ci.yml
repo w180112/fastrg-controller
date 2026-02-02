@@ -60,7 +60,7 @@ jobs:
     - name: Setup build environment
       uses: ./.github/actions/setup-build-env
     - name: Download Docker image artifact
-      uses: actions/download-artifact@v6
+      uses: actions/download-artifact@v7
       with:
         name: docker-image
     - name: Load Docker image
@@ -107,7 +107,7 @@ jobs:
     - name: Setup build environment
       uses: ./.github/actions/setup-build-env
     - name: Download Docker image artifact
-      uses: actions/download-artifact@v6
+      uses: actions/download-artifact@v7
       with:
         name: docker-image
     - name: Load Docker image
