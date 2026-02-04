@@ -43,26 +43,29 @@ This is an SDN-enabled and open source Residential Gateway Controller, designed 
 ││ (grpc: 50052)  │    │   (etcd:2379)   │    │  gRPC: 50051    ││
 ││PPPoE Client/NAT│    │                 │    │HTTP(s):8080/8443││
 ││  DHCP Server   │◄─────────────────────────▶│  REST API: 8443 ││
-│└────────────────┘    └─────────────────┘    └─────────────────┘│
-│       ▲                                                        │
-│       │   IPoE over VLAN                                       │
-│       ▼                                                        │
+│└────────────────┘    └─────────────────┘    │Prometheus: 55688││
+│       ▲                                     └─────────────────┘│
+│       │   IPoE over VLAN, VLAN A for Subscriber 1,             │
+│       ▼   VLAN B for Subscriber 2                              │
 │┌────────────────┐                                              │
-││      OLT       │                                              │
-│└────────────────┘                                              │
+││      OLT       │ ◄────────────────────┐                       │
+│└────────────────┘                      │                       │
 └───────▲────────────────────────────────────────────────────────┘
-        │  PON Network
-        ▼
-┌────────────────┐
-│      ONT       │
-└────────────────┘
-        ▲
-        │  IPoE
-        ▼
-┌─────────────────┐
-│Subscriber Device│
-│  (DHCP client)  │
-└─────────────────┘
+        │  PON Network                   │   PON Network 
+        ▼                                ▼
+┌───────────────────┐           ┌───────────────────┐    
+│┌────────────────┐ │           │┌────────────────┐ │
+││      ONT       │ │           ││      ONT       │ │
+│└────────────────┘ │           │└────────────────┘ │
+│        ▲          │           │        ▲          │
+│        │  IPoE    │           │        │  IPoE    │
+│        ▼          │           │        ▼          │
+│┌─────────────────┐│           │┌─────────────────┐│
+││Subscriber Device││           ││Subscriber Device││
+││  (DHCP client)  ││           ││  (DHCP client)  ││
+│└─────────────────┘│           │└─────────────────┘│
+│   Subscriber 1    │           │   Subscriber 2    │
+└───────────────────┘           └───────────────────┘       ...
 ```
 
 ## Deployment
@@ -80,6 +83,7 @@ The FastRG system must work with an etcd cluster for configuration storage. You 
     - The port `8444` with https can be used for accessing FastRG controller log file.
     - FastRG controller also provides Swagger API documentation for REST API at `http://<controller-ip>:8443/swagger/index.html` by default.
 - It also provides Prometheus metrics endpoint for monitoring purposes. The Prometheus metrics can be accessed at `http://<controller-ip>:55688/metrics` by default.
+    - All metrics name are prefixed with `fastrg_`, please use panels in Grafana dashboard to search them.
 - Please make sure all above ports are enabled in the firewall settings to allow proper communication.
 
 ## Quick Start and test the FastRG Controller
