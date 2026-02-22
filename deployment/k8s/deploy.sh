@@ -216,6 +216,60 @@ deploy_etcd() {
     log_success "ETCD deployment completed"
 }
 
+# Wait for Cilium CRDs to be established
+wait_for_cilium_crds() {
+    log_info "Waiting for Cilium CRDs to be established..."
+    
+    local crds=(
+        "ciliumloadbalancerippools.cilium.io"
+        "ciliuml2announcementpolicies.cilium.io"
+    )
+    
+    for crd in "${crds[@]}"; do
+        local retry=30
+        while [ $retry -gt 0 ]; do
+            if kubectl wait --for=condition=Established --timeout=10s crd/$crd 2>/dev/null; then
+                log_success "CRD $crd is established"
+                break
+            fi
+            retry=$((retry - 1))
+            if [ $retry -eq 0 ]; then
+                log_error "Timeout waiting for CRD $crd to be established"
+                return 1
+            fi
+            sleep 2
+        done
+    done
+    
+    log_success "All required Cilium CRDs are established"
+}
+
+# Retry kubectl apply with exponential backoff
+retry_kubectl_apply() {
+    local file=$1
+    local description=$2
+    local max_attempts=5
+    local attempt=1
+    local wait_time=2
+    
+    while [ $attempt -le $max_attempts ]; do
+        log_info "Attempting to apply $description (attempt $attempt/$max_attempts)..."
+        if kubectl apply -f "$file" 2>&1; then
+            return 0
+        fi
+        
+        if [ $attempt -lt $max_attempts ]; then
+            log_warning "$description failed, retrying in ${wait_time}s..."
+            sleep $wait_time
+            wait_time=$((wait_time * 2))
+            attempt=$((attempt + 1))
+        else
+            log_error "$description failed after $max_attempts attempts"
+            return 1
+        fi
+    done
+}
+
 # Create Cilium LoadBalancer IP Pool
 create_ip_pool() {
     local host_ip=$1
@@ -234,7 +288,7 @@ spec:
       app: fastrg-controller
 EOF
     
-    kubectl apply -f /tmp/cilium-lb-pool.yml
+    retry_kubectl_apply /tmp/cilium-lb-pool.yml "IP Pool creation"
     log_success "IP Pool created successfully"
 }
 
@@ -264,7 +318,7 @@ spec:
   - $interface
 EOF
     
-    kubectl apply -f /tmp/cilium-l2-policy.yml
+    retry_kubectl_apply /tmp/cilium-l2-policy.yml "L2 Policy creation"
     log_success "L2 Policy created successfully (interface: $interface)"
 }
 
@@ -387,7 +441,7 @@ test_services() {
         log_success "gRPC (50051) port is reachable"
     else
         log_warning "gRPC (50051) port may not be ready"
-        kubectl run test-pod --image=curlimages/curl:latest --rm -i --restart=Never -n "$2" -- curl -k -s --connect-timeout 5 fastrg-controller-service:8443/ && echo "Internal service is normal" || echo "Internal service is abnormal"
+        kubectl run test-pod --image=curlimages/curl:latest --rm -i --restart=Never -n "$2" -- curl -k -s --connect-timeout 5 fastrg-controller-service:8443/ && echo "Internal service is normal" || echo "Check internal service"
         test_failed=1
     fi
     
@@ -620,6 +674,9 @@ main() {
     
     # Deploy ETCD
     deploy_etcd "$NAMESPACE"
+    
+    # Wait for Cilium CRDs to be ready before applying resources
+    wait_for_cilium_crds
     
     # Create Cilium configuration
     create_ip_pool $host_ip
